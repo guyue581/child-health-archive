@@ -275,6 +275,17 @@ body {
     color: white;
 }
 
+.btn-outline {
+    background: transparent;
+    color: var(--text-light);
+    border: 1px solid var(--border);
+}
+.btn-outline:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: transparent;
+}
+
 .btn-small {
     padding: 6px 12px;
     font-size: 12px;
@@ -865,6 +876,72 @@ body {
     margin-bottom: 4px;
 }
 
+/* 筛选按钮 */
+.filter-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: white;
+    color: var(--text-light);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.filter-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.filter-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* 全屏图片查看器 */
+.image-viewer-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+}
+.image-viewer-overlay img {
+    max-width: 95%;
+    max-height: 95%;
+    object-fit: contain;
+    cursor: zoom-in;
+    transition: transform 0.2s;
+}
+.image-viewer-close {
+    position: absolute;
+    top: 20px; right: 30px;
+    color: white;
+    font-size: 40px;
+    cursor: pointer;
+    z-index: 10001;
+    background: none;
+    border: none;
+    line-height: 1;
+}
+.image-viewer-hint {
+    position: absolute;
+    bottom: 20px;
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+}
+.report-preview-img {
+    max-width: 100%;
+    cursor: zoom-in;
+    border-radius: 8px;
+    transition: opacity 0.2s;
+}
+.report-preview-img:hover {
+    opacity: 0.9;
+}
+
 /* 打印样式 */
 @media print {
     @page {
@@ -879,6 +956,7 @@ body {
     .sidebar,
     .top-bar,
     .export-config-card,
+    .report-preview-actions,
     .toast,
     .modal {
         display: none !important;

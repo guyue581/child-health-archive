@@ -61,11 +61,25 @@ function renderGrowthPage() {
         <div class="card">
             <h3>身高生长曲线</h3>
             <div id="heightChart" style="width: 100%; height: 380px;"></div>
+            <div class="percentile-legend" style="padding: 12px 16px; background: #f7fafc; border-radius: 8px; margin-top: 8px; font-size: 13px; color: #666; line-height: 1.8;">
+                <strong>📊 图表说明：</strong>
+                <strong style="color: #48bb78;">P50</strong>（绿色）= 同龄儿童中位数，代表<strong>平均水平</strong>；
+                <span style="color: #cbd5e0;">P3</span> = 第3百分位（<strong>偏矮</strong>参考线，仅3%的孩子低于此线）；
+                <span style="color: #cbd5e0;">P97</span> = 第97百分位（<strong>偏高</strong>参考线，仅3%的孩子高于此线）；
+                <strong style="color: #667eea;">●</strong> 蓝色点 = 孩子的实际测量值。P3-P97 之间都属于正常范围。
+            </div>
         </div>
         
         <div class="card">
             <h3>体重生长曲线</h3>
             <div id="weightChart" style="width: 100%; height: 380px;"></div>
+            <div class="percentile-legend" style="padding: 12px 16px; background: #f7fafc; border-radius: 8px; margin-top: 8px; font-size: 13px; color: #666; line-height: 1.8;">
+                <strong>📊 图表说明：</strong>
+                <strong style="color: #48bb78;">P50</strong>（绿色）= 同龄儿童中位数，代表<strong>平均水平</strong>；
+                <span style="color: #cbd5e0;">P3</span> = 第3百分位（<strong>偏轻</strong>参考线）；
+                <span style="color: #cbd5e0;">P97</span> = 第97百分位（<strong>偏重</strong>参考线）；
+                <strong style="color: #667eea;">●</strong> 蓝色点 = 孩子的实际测量值。P3-P97 之间都属于正常范围。
+            </div>
         </div>
     `;
     
@@ -172,17 +186,17 @@ function renderGrowthCharts(growthList) {
     
     // 渲染身高图
     renderChart('heightChart', '身高 (cm)', months, [
-        { name: 'P3', data: p3Height, color: '#cbd5e0', type: 'line' },
-        { name: 'P50', data: p50Height, color: '#48bb78', type: 'line' },
-        { name: 'P97', data: p97Height, color: '#cbd5e0', type: 'line' },
+        { name: 'P3 偏矮参考线', data: p3Height, color: '#cbd5e0', type: 'line' },
+        { name: 'P50 平均水平', data: p50Height, color: '#48bb78', type: 'line' },
+        { name: 'P97 偏高参考线', data: p97Height, color: '#cbd5e0', type: 'line' },
         { name: '实际身高', data: userHeightData, color: '#667eea', type: 'scatter' }
     ]);
     
     // 渲染体重图
     renderChart('weightChart', '体重 (kg)', months, [
-        { name: 'P3', data: p3Weight, color: '#cbd5e0', type: 'line' },
-        { name: 'P50', data: p50Weight, color: '#48bb78', type: 'line' },
-        { name: 'P97', data: p97Weight, color: '#cbd5e0', type: 'line' },
+        { name: 'P3 偏轻参考线', data: p3Weight, color: '#cbd5e0', type: 'line' },
+        { name: 'P50 平均水平', data: p50Weight, color: '#48bb78', type: 'line' },
+        { name: 'P97 偏重参考线', data: p97Weight, color: '#cbd5e0', type: 'line' },
         { name: '实际体重', data: userWeightData, color: '#667eea', type: 'scatter' }
     ]);
 }

@@ -18,6 +18,12 @@ function renderMedicalPage() {
                     <button class="btn btn-secondary" onclick="showAddMedicalForm('medication')">+ 记录用药</button>
                 </div>
             </div>
+            <div class="filter-bar" style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <span style="font-size: 14px; color: #666;">筛选：</span>
+                <button class="filter-btn active" data-filter="all" onclick="filterMedical('all', this)">全部</button>
+                <button class="filter-btn" data-filter="visit" onclick="filterMedical('visit', this)">🏥 就诊</button>
+                <button class="filter-btn" data-filter="medication" onclick="filterMedical('medication', this)">💊 用药</button>
+            </div>
             <div id="medicalTimeline"></div>
         </div>
     `;
@@ -36,6 +42,9 @@ function renderMedicalPage() {
     loadMedicalData();
 }
 
+// 全局缓存原始数据供筛选
+let _medicalAllData = [];
+
 /**
  * 加载就诊用药数据
  */
@@ -44,12 +53,28 @@ async function loadMedicalData() {
         const medicalList = await getDataByChildId('medical', AppState.currentChildId);
         // 按日期倒序排列
         medicalList.sort((a, b) => new Date(b.date) - new Date(a.date));
-        
+        _medicalAllData = medicalList;
         renderMedicalTimeline(medicalList);
     } catch (error) {
         console.error('加载就诊用药记录失败:', error);
         showToast('加载就诊用药记录失败', 'error');
     }
+}
+
+/**
+ * 筛选就诊用药记录
+ * @param {string} type - 筛选类型：all/visit/medication
+ * @param {HTMLElement} btn - 点击的按钮
+ */
+function filterMedical(type, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    let filtered = _medicalAllData;
+    if (type !== 'all') {
+        filtered = _medicalAllData.filter(item => item.type === type);
+    }
+    renderMedicalTimeline(filtered);
 }
 
 /**

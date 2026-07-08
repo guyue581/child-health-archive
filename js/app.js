@@ -240,6 +240,7 @@ function renderDashboard() {
     welcomeCard.innerHTML = `
         <h3>你好，${child ? child.name : ''}的家长</h3>
         <p>孩子当前 ${ageText}，让我们共同关注孩子的健康成长。</p>
+        <div id="currentVitals" class="current-vitals" style="margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap;"></div>
     `;
     
     // 异步加载统计数据
@@ -291,17 +292,35 @@ async function loadDashboardStats(container) {
                 <h4>检测报告</h4>
                 <div class="value">${reportList.length} 份</div>
             </div>
-            ${latestGrowth ? `
-            <div class="stat-card">
-                <h4>最新身高</h4>
-                <div class="value">${latestGrowth.height} cm</div>
-            </div>
-            <div class="stat-card">
-                <h4>最新体重</h4>
-                <div class="value">${latestGrowth.weight} kg</div>
-            </div>
-            ` : ''}
         `;
+        
+        const vitalsEl = document.getElementById('currentVitals');
+        if (vitalsEl) {
+            if (latestGrowth) {
+                vitalsEl.innerHTML = `
+                    <div class="vital-badge" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 18px; border-radius: 12px; font-size: 14px;">
+                        <span style="opacity: 0.85;">📏 最新身高</span>
+                        <strong style="font-size: 20px; margin-left: 8px;">${latestGrowth.height} cm</strong>
+                        <span style="opacity: 0.7; font-size: 12px; margin-left: 6px;">(${formatDate(latestGrowth.date)})</span>
+                    </div>
+                    <div class="vital-badge" style="background: linear-gradient(135deg, #f093fb, #f5576c); color: white; padding: 10px 18px; border-radius: 12px; font-size: 14px;">
+                        <span style="opacity: 0.85;">⚖️ 最新体重</span>
+                        <strong style="font-size: 20px; margin-left: 8px;">${latestGrowth.weight} kg</strong>
+                        <span style="opacity: 0.7; font-size: 12px; margin-left: 6px;">(${formatDate(latestGrowth.date)})</span>
+                    </div>
+                `;
+                if (latestGrowth.headCircumference) {
+                    vitalsEl.innerHTML += `
+                        <div class="vital-badge" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; padding: 10px 18px; border-radius: 12px; font-size: 14px;">
+                            <span style="opacity: 0.85;">🧢 头围</span>
+                            <strong style="font-size: 20px; margin-left: 8px;">${latestGrowth.headCircumference} cm</strong>
+                        </div>
+                    `;
+                }
+            } else {
+                vitalsEl.innerHTML = `<span style="color: #999; font-size: 14px;">暂无生长记录，去<a href="javascript:void(0)" onclick="switchPage('growth')" style="color: var(--primary);">记录身高体重</a></span>`;
+            }
+        }
     } catch (error) {
         console.error('加载统计数据失败:', error);
         container.innerHTML = '<p style="color: #999;">加载统计数据失败</p>';

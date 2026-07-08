@@ -47,8 +47,12 @@ function renderExportPage() {
             </div>
             
             <div class="export-actions">
+                <button class="btn btn-primary" onclick="generateReportPreview()" style="font-size: 15px; padding: 10px 24px;">📋 生成健康报告预览</button>
                 <button class="btn btn-secondary" onclick="exportJSON()">📥 导出JSON备份</button>
-                <button class="btn btn-primary" onclick="previewHealthReport()">🖨️ 打印/导出PDF</button>
+            </div>
+            <div id="reportPreviewActions" class="report-preview-actions" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); gap: 12px;">
+                <button class="btn btn-primary" onclick="printReport()">🖨️ 打印/导出PDF</button>
+                <button class="btn btn-outline" onclick="clearReportPreview()">清除预览</button>
             </div>
         </div>
         
@@ -116,9 +120,9 @@ function filterByDateRange(list, minDate) {
 }
 
 /**
- * 预览并打印健康报告
+ * 生成健康报告预览（不直接打印）
  */
-async function previewHealthReport() {
+async function generateReportPreview() {
     if (!checkChildSelected()) return;
 
     const selectedModules = getSelectedModules();
@@ -135,13 +139,38 @@ async function previewHealthReport() {
         const previewArea = document.getElementById('reportPreviewArea');
         previewArea.innerHTML = html;
 
-        // 短暂延迟确保渲染完成，然后触发打印
-        setTimeout(() => {
-            window.print();
-        }, 300);
+        const actionsBar = document.getElementById('reportPreviewActions');
+        if (actionsBar) {
+            actionsBar.style.display = 'flex';
+        }
+        
+        previewArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         console.error('生成报告失败:', error);
         showToast('生成报告失败', 'error');
+    }
+}
+
+/**
+ * 打印当前已预览的报告
+ */
+function printReport() {
+    const previewArea = document.getElementById('reportPreviewArea');
+    if (!previewArea || !previewArea.querySelector('.report-document')) {
+        showToast('请先生成报告预览', 'warning');
+        return;
+    }
+    window.print();
+}
+
+/**
+ * 清除报告预览
+ */
+function clearReportPreview() {
+    document.getElementById('reportPreviewArea').innerHTML = '';
+    const actionsBar = document.getElementById('reportPreviewActions');
+    if (actionsBar) {
+        actionsBar.style.display = 'none';
     }
 }
 

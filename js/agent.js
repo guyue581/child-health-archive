@@ -135,14 +135,15 @@ function renderAgentPage() {
                 </div>
             </div>
             <div class="quick-questions" id="quickQuestions">
-                <span class="quick-question" onclick="sendQuickQuestion('上次血常规什么时候检查的？')">上次血常规什么时候？</span>
-                <span class="quick-question" onclick="sendQuickQuestion('最近半年身高长了多少？')">最近半年身高变化</span>
-                <span class="quick-question" onclick="sendQuickQuestion('还有哪些疫苗没打？')">还差什么疫苗？</span>
-                <span class="quick-question" onclick="sendQuickQuestion('孩子发烧了怎么办？')">孩子发烧了怎么办</span>
-                <span class="quick-question" onclick="sendQuickQuestion('推荐附近的儿科医院')">推荐儿科医院</span>
+                <span class="quick-question" onclick="sendQuickQuestion('上次感冒/发烧是什么时候？')">上次感冒什么时候</span>
+                <span class="quick-question" onclick="sendQuickQuestion('上次血常规什么时候检查的？')">上次血常规</span>
+                <span class="quick-question" onclick="sendQuickQuestion('最近半年身高长了多少？')">最近身高变化</span>
+                <span class="quick-question" onclick="sendQuickQuestion('还有哪些疫苗没打？')">还差什么疫苗</span>
+                <span class="quick-question" onclick="sendQuickQuestion('孩子发烧了怎么办？')">发烧怎么办</span>
+                <span class="quick-question" onclick="sendQuickQuestion('推荐附近的儿科医院')">推荐医院</span>
             </div>
             <div class="chat-input">
-                <input type="text" id="chatInput" placeholder="输入问题，例如：上次血常规结果怎么样？" maxlength="200">
+                <input type="text" id="chatInput" placeholder="输入问题，例如：上次感冒是什么时候？孩子发烧怎么办？" maxlength="200">
                 <button class="btn btn-primary" onclick="sendChatMessage()">发送</button>
             </div>
         </div>
@@ -230,6 +231,15 @@ function updateChatMessage(messageId, text) {
     }
 }
 
+// 疾病/症状关键词（用于匹配就诊记录查询）
+const DISEASE_KEYWORDS = ['感冒', '发烧', '发热', '咳嗽', '流鼻涕', '腹泻', '呕吐', '皮疹', '湿疹', '肚子疼', '腹痛', '耳朵疼', '中耳炎', '眼睛红', '结膜炎', '手足口', '流感', '幼儿急疹', '过敏', '便秘', '积食', '扁桃体炎', '肺炎', '支气管炎', '鼻炎', '外伤', '骨折', '抽搐', '摔'];
+
+// 历史查询触发词
+const HISTORY_TRIGGERS = ['上次', '什么时候', '有没有过', '以前', '之前', '上次是', '最近一次', '上次得'];
+
+// 护理建议触发词
+const ADVICE_TRIGGERS = ['怎么办', '怎么处理', '如何护理', '怎么护理', '要不要去医院', '要去医院吗', '需要看医生吗', '严重吗', '怎么回事'];
+
 /**
  * 分析健康问题并生成回复
  * @param {string} question - 用户问题
@@ -243,50 +253,141 @@ async function analyzeHealthQuestion(question) {
     const lowerQuestion = question.toLowerCase();
     const child = getCurrentChild();
     
-    // 1. 检测症状分析类问题
+    // 1. 检测医院推荐（优先级最高的导航类问题）
+    if (lowerQuestion.includes('医院') || lowerQuestion.includes('看病') || lowerQuestion.includes('就医')) {
+        return recommendHospital(lowerQuestion);
+    }
+    
+    // 2. 检测是否在问某个疾病/症状的就诊历史（如"上次感冒什么时候"）
+    const diseaseMatch = DISEASE_KEYWORDS.find(kw => question.includes(kw));
+    const isAskingHistory = HISTORY_TRIGGERS.some(t => question.includes(t));
+    const isAskingAdvice = ADVICE_TRIGGERS.some(t => question.includes(t));
+    
+    if (diseaseMatch) {
+        // 如果包含历史查询词，优先查就诊记录
+        if (isAskingHistory || (question.includes('什么') && question.includes('时候')) || question.includes('记录')) {
+            return await queryDiseaseHistory(diseaseMatch);
+        }
+        // 如果包含护理建议词，给护理建议
+        if (isAskingAdvice || lowerQuestion.includes('怎么')) {
+            const symptomKey = mapDiseaseToSymptom(diseaseMatch);
+            return analyzeSymptom(symptomKey || diseaseMatch);
+        }
+        // 默认：既查历史记录，也给护理建议
+        const historyResult = await queryDiseaseHistory(diseaseMatch);
+        const symptomKey = mapDiseaseToSymptom(diseaseMatch);
+        const adviceResult = symptomKey && SYMPTOM_KNOWLEDGE[symptomKey] ? analyzeSymptom(symptomKey) : '';
+        return historyResult + (adviceResult ? '<br><br>' + adviceResult : '');
+    }
+    
+    // 3. 检测症状分析类问题（不涉及具体疾病名但有症状关键词）
     for (const symptom in SYMPTOM_KNOWLEDGE) {
         if (lowerQuestion.includes(symptom)) {
             return analyzeSymptom(symptom);
         }
     }
     
-    // 2. 检测医院推荐
-    if (lowerQuestion.includes('医院') || lowerQuestion.includes('看病') || lowerQuestion.includes('就医')) {
-        return recommendHospital(lowerQuestion);
-    }
-    
-    // 3. 检测报告查询
+    // 4. 检测报告查询
     if (lowerQuestion.includes('血常规') || lowerQuestion.includes('尿常规') || lowerQuestion.includes('检查') || lowerQuestion.includes('报告')) {
         return await queryReports(lowerQuestion);
     }
     
-    // 4. 生长数据查询
+    // 5. 生长数据查询
     if (lowerQuestion.includes('身高') || lowerQuestion.includes('体重') || lowerQuestion.includes('长了多少') || lowerQuestion.includes('生长')) {
         return await queryGrowth(lowerQuestion);
     }
     
-    // 5. 疫苗查询
+    // 6. 疫苗查询
     if (lowerQuestion.includes('疫苗') || lowerQuestion.includes('接种')) {
         return await queryVaccines(lowerQuestion);
     }
     
-    // 6. 就诊记录查询
+    // 7. 就诊记录查询
     if (lowerQuestion.includes('就诊') || lowerQuestion.includes('看病记录') || lowerQuestion.includes('用药')) {
         return await queryMedical(lowerQuestion);
     }
     
-    // 7. 通用健康档案查询
+    // 8. 通用健康档案查询
     if (lowerQuestion.includes('档案') || lowerQuestion.includes('信息') || lowerQuestion.includes('怎么样')) {
         return await queryChildProfile();
     }
     
     // 默认回复
     return `抱歉，我暂时无法回答这个问题。你可以尝试问我：<br>
+    · 上次感冒/发烧是什么时候？<br>
     · 上次血常规什么时候检查的？<br>
     · 孩子发烧了怎么办？<br>
     · 最近半年身高长了多少？<br>
     · 还有哪些疫苗没打？<br>
     · 推荐附近的儿科医院`;
+}
+
+/**
+ * 将疾病名映射到症状知识库中的key
+ * @param {string} disease - 疾病/症状名
+ * @returns {string|null}
+ */
+function mapDiseaseToSymptom(disease) {
+    const map = {
+        '发烧': '发烧', '发热': '发热', '感冒': '发烧', '流感': '发烧',
+        '咳嗽': '咳嗽', '支气管炎': '咳嗽', '肺炎': '咳嗽',
+        '流鼻涕': '流鼻涕', '鼻炎': '流鼻涕',
+        '腹泻': '腹泻', '拉肚子': '腹泻',
+        '呕吐': '呕吐',
+        '皮疹': '皮疹', '湿疹': '皮疹', '幼儿急疹': '皮疹', '手足口': '皮疹',
+        '肚子疼': '肚子疼', '腹痛': '肚子疼', '积食': '肚子疼', '便秘': '肚子疼',
+        '耳朵疼': '耳朵疼', '中耳炎': '耳朵疼',
+        '眼睛红': '眼睛红', '结膜炎': '眼睛红',
+        '过敏': '皮疹'
+    };
+    return map[disease] || null;
+}
+
+/**
+ * 查询特定疾病的就诊历史
+ * @param {string} disease - 疾病/症状关键词
+ * @returns {Promise<string>}
+ */
+async function queryDiseaseHistory(disease) {
+    const medicalList = await getDataByChildId('medical', AppState.currentChildId);
+    medicalList.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // 在就诊记录的title、symptoms、diagnosis、notes中搜索关键词
+    const matched = medicalList.filter(m => {
+        const text = (m.title || '') + (m.symptoms || '') + (m.diagnosis || '') + (m.notes || '') + (m.medicine || '');
+        return text.includes(disease);
+    });
+    
+    if (matched.length === 0) {
+        return `<strong>🔍 ${disease}相关记录</strong><br><br>在就诊/用药记录中没有找到与"${disease}"相关的记录。如果之前有相关就诊，你可以到"就诊用药"页面补充记录。`;
+    }
+    
+    const latest = matched[0];
+    const typeText = latest.type === 'visit' ? '就诊' : '用药';
+    
+    let html = `<strong>🔍 ${disease}相关记录</strong><br><br>`;
+    html += `最近一次${disease}相关${typeText}：<br>`;
+    html += `· 日期：${formatDate(latest.date)}<br>`;
+    html += `· ${typeText}原因：${latest.title}<br>`;
+    if (latest.hospital) html += `· 医院：${latest.hospital}<br>`;
+    if (latest.symptoms) html += `· 症状：${latest.symptoms}<br>`;
+    if (latest.diagnosis) html += `· 诊断：${latest.diagnosis}<br>`;
+    if (latest.medicine) html += `· 用药：${latest.medicine}<br>`;
+    if (latest.dosage) html += `· 用法：${latest.dosage}<br>`;
+    if (latest.notes) html += `· 备注：${latest.notes}<br>`;
+    
+    if (matched.length > 1) {
+        html += '<br><strong>历史记录：</strong><br>';
+        matched.slice(1, 5).forEach(m => {
+            const t = m.type === 'visit' ? '就诊' : '用药';
+            html += `· ${formatDate(m.date)} ${t}：${m.title}<br>`;
+        });
+        if (matched.length > 5) {
+            html += `（还有 ${matched.length - 5} 条记录，请在就诊用药页面查看）`;
+        }
+    }
+    
+    return html;
 }
 
 /**
@@ -496,11 +597,11 @@ async function queryGrowth(question) {
             const p50Height = whoData[nearestMonth] ? whoData[nearestMonth][1] : null;
             if (p50Height) {
                 if (latest.height >= p50Height * 0.97 && latest.height <= p50Height * 1.03) {
-                    html += `· 身高约处于同龄儿童 P50 水平，发育正常<br>`;
+                    html += `· 身高约处于同龄儿童平均水平（P50），发育正常<br>`;
                 } else if (latest.height < p50Height * 0.97) {
-                    html += `· 身高略低于同龄 P50 水平，可继续观察生长趋势<br>`;
+                    html += `· 身高略低于同龄平均水平（P50），可继续观察生长趋势<br>`;
                 } else {
-                    html += `· 身高高于同龄 P50 水平，发育良好<br>`;
+                    html += `· 身高高于同龄平均水平（P50），发育良好<br>`;
                 }
             }
         }

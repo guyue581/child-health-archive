@@ -307,6 +307,9 @@ function fileToBase64(file) {
  * 预览报告附件
  * @param {number} reportId - 报告ID
  */
+// 当前预览的报告数据
+let _currentPreviewFile = null;
+
 async function previewReport(reportId) {
     try {
         const report = await getDataById('reports', reportId);
@@ -315,25 +318,83 @@ async function previewReport(reportId) {
             return;
         }
         
+        _currentPreviewFile = { src: report.fileData, name: report.fileName, type: report.fileType };
+        
         let previewHtml = '';
         if (report.fileType && report.fileType.startsWith('image/')) {
-            previewHtml = `<img src="${report.fileData}" class="report-preview" alt="报告图片">`;
+            previewHtml = `<img id="previewImg" src="${report.fileData}" class="report-preview-img" alt="报告图片" title="点击放大查看" style="cursor: zoom-in;">`;
         } else if (report.fileType === 'application/pdf') {
             previewHtml = `<embed src="${report.fileData}" type="application/pdf" width="100%" height="500px">`;
         } else {
-            previewHtml = `<p>不支持预览此格式，请下载查看。</p><a href="${report.fileData}" download="${report.fileName}" class="btn btn-primary">下载文件</a>`;
+            previewHtml = `<p>不支持预览此格式，请下载查看。</p>`;
         }
         
         showModal(report.fileName || '报告预览', `
             <div>${previewHtml}</div>
-            <div style="margin-top: 16px; text-align: center;">
-                <a href="${report.fileData}" download="${report.fileName}" class="btn btn-primary">下载文件</a>
+            <div style="margin-top: 16px; text-align: center; display: flex; gap: 12px; justify-content: center;">
+                ${report.fileType && report.fileType.startsWith('image/') ? `<button class="btn btn-secondary" onclick="zoomCurrentImage()">🔍 放大查看</button>` : ''}
+                <a href="${report.fileData}" download="${report.fileName}" class="btn btn-primary" style="text-decoration: none; display: inline-block;">📥 下载文件</a>
             </div>
         `);
+        
+        setTimeout(() => {
+            const img = document.getElementById('previewImg');
+            if (img) {
+                img.addEventListener('click', () => openImageViewer(_currentPreviewFile.src));
+            }
+        }, 100);
     } catch (error) {
         console.error('预览报告失败:', error);
         showToast('预览失败', 'error');
     }
+}
+
+/**
+ * 从模态框中放大当前预览图片
+ */
+function zoomCurrentImage() {
+    if (_currentPreviewFile) {
+        openImageViewer(_currentPreviewFile.src);
+    }
+}
+
+/**
+ * 打开全屏图片查看器
+ * @param {string} src - 图片Base64 URL
+ */
+function openImageViewer(src) {
+    closeModal();
+    const overlay = document.createElement('div');
+    overlay.className = 'image-viewer-overlay';
+    overlay.onclick = function() {
+        document.body.removeChild(overlay);
+        document.body.style.overflow = '';
+    };
+    
+    overlay.innerHTML = `
+        <button class="image-viewer-close" onclick="this.parentElement.click()">×</button>
+        <img src="${src}" alt="报告图片" id="viewerImg" title="点击图片放大/缩小，点击背景关闭">
+        <div class="image-viewer-hint">点击图片放大/缩小，滚轮缩放，点击背景关闭</div>
+    `;
+    
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    
+    setTimeout(() => {
+        const viewerImg = document.getElementById('viewerImg');
+        let scale = 1;
+        viewerImg.addEventListener('click', function(e) {
+            e.stopPropagation();
+            scale = scale === 1 ? 1.8 : 1;
+            this.style.transform = `scale(${scale})`;
+        });
+        overlay.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            scale += e.deltaY > 0 ? -0.1 : 0.1;
+            scale = Math.max(0.5, Math.min(3, scale));
+            viewerImg.style.transform = `scale(${scale})`;
+        });
+    }, 50);
 }
 
 /**
