@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>童心健康档案 - 儿童健康管理平台</title>
+    <!-- ECharts 图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- 侧边栏导航 -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">👶</span>
+                <h1>童心健康档案</h1>
+            </div>
+            
+            <!-- 当前孩子选择器 -->
+            <div class="child-selector">
+                <label>当前孩子</label>
+                <select id="currentChildSelect">
+                    <option value="">请选择孩子</option>
+                </select>
+                <button id="addChildBtn" class="btn btn-small">+ 添加孩子</button>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" data-page="dashboard" class="nav-item active">
+                    <span>📊</span> 总览
+                </a>
+                <a href="#" data-page="archive" class="nav-item">
+                    <span>👤</span> 儿童档案
+                </a>
+                <a href="#" data-page="growth" class="nav-item">
+                    <span>📈</span> 生长曲线
+                </a>
+                <a href="#" data-page="vaccine" class="nav-item">
+                    <span>💉</span> 疫苗接种
+                </a>
+                <a href="#" data-page="medical" class="nav-item">
+                    <span>🗓️</span> 就诊用药
+                </a>
+                <a href="#" data-page="reports" class="nav-item">
+                    <span>📄</span> 检测报告
+                </a>
+                <a href="#" data-page="agent" class="nav-item">
+                    <span>🤖</span> AI健康助手
+                </a>
+                <a href="#" data-page="export" class="nav-item">
+                    <span>📑</span> 健康报告
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <p>数据本地存储，隐私安全</p>
+            </div>
+        </aside>
+        
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 顶部栏 -->
+            <header class="top-bar">
+                <h2 id="pageTitle">总览</h2>
+                <div class="top-actions">
+                    <span id="currentChildName" class="child-name">未选择孩子</span>
+                </div>
+            </header>
+            
+            <!-- 页面内容容器 -->
+            <div class="content-wrapper">
+                <!-- 总览页 -->
+                <section id="page-dashboard" class="page active">
+                    <div class="welcome-card">
+                        <h3>欢迎使用童心健康档案</h3>
+                        <p>请先添加孩子信息，开始管理孩子的健康成长数据。</p>
+                    </div>
+                    <div class="dashboard-grid" id="dashboardGrid">
+                        <!-- 动态生成统计卡片 -->
+                    </div>
+                </section>
+                
+                <!-- 儿童档案页 -->
+                <section id="page-archive" class="page">
+                    <div id="archiveContainer"></div>
+                </section>
+                
+                <!-- 生长曲线页 -->
+                <section id="page-growth" class="page">
+                    <div id="growthContainer"></div>
+                </section>
+                
+                <!-- 疫苗接种页 -->
+                <section id="page-vaccine" class="page">
+                    <div id="vaccineContainer"></div>
+                </section>
+                
+                <!-- 就诊用药页 -->
+                <section id="page-medical" class="page">
+                    <div id="medicalContainer"></div>
+                </section>
+                
+                <!-- 检测报告页 -->
+                <section id="page-reports" class="page">
+                    <div id="reportsContainer"></div>
+                </section>
+                
+                <!-- AI健康助手页 -->
+                <section id="page-agent" class="page">
+                    <div id="agentContainer"></div>
+                </section>
+                
+                <!-- 健康报告页 -->
+                <section id="page-export" class="page">
+                    <div id="exportContainer"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 通用弹窗 -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">标题</h3>
+                <button id="modalClose" class="modal-close">&times;</button>
+            </div>
+            <div id="modalBody" class="modal-body"></div>
+        </div>
+    </div>
+    
+    <!-- 提示消息 -->
+    <div id="toast" class="toast hidden"></div>
+    
+    <!-- 模块脚本 -->
+    <script src="js/db.js"></script>
+    <script src="js/archive.js"></script>
+    <script src="js/growth.js"></script>
+    <script src="js/vaccine.js"></script>
+    <script src="js/medical.js"></script>
+    <script src="js/reports.js"></script>
+    <script src="js/demo-data.js"></script>
+    <script src="js/agent.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
