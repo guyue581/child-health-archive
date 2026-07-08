@@ -51,8 +51,12 @@ let _medicalAllData = [];
 async function loadMedicalData() {
     try {
         const medicalList = await getDataByChildId('medical', AppState.currentChildId);
-        // 按日期倒序排列
-        medicalList.sort((a, b) => new Date(b.date) - new Date(a.date));
+        // 按日期+时间倒序排列（兼容无时间的旧数据）
+        medicalList.sort((a, b) => {
+            const dateA = a.time ? `${a.date} ${a.time}` : a.date;
+            const dateB = b.time ? `${b.date} ${b.time}` : b.date;
+            return new Date(dateB) - new Date(dateA);
+        });
         _medicalAllData = medicalList;
         renderMedicalTimeline(medicalList);
     } catch (error) {
@@ -102,11 +106,12 @@ function renderMedicalTimeline(medicalList) {
         const isVisit = item.type === 'visit';
         const icon = isVisit ? '🏥' : '💊';
         const title = isVisit ? '就诊' : '用药';
+        const dateDisplay = item.time ? `${formatDate(item.date)} ${item.time}` : formatDate(item.date);
         
         const timelineItem = document.createElement('div');
         timelineItem.className = 'timeline-item';
         timelineItem.innerHTML = `
-            <div class="timeline-date">${formatDate(item.date)}</div>
+            <div class="timeline-date">${dateDisplay}</div>
             <div class="timeline-title">${icon} ${title}：${item.title}</div>
             <div class="timeline-content">
                 ${item.hospital ? `<p>医院/机构：${item.hospital}</p>` : ''}
@@ -114,7 +119,7 @@ function renderMedicalTimeline(medicalList) {
                 ${item.symptoms ? `<p>症状：${item.symptoms}</p>` : ''}
                 ${item.diagnosis ? `<p>诊断：${item.diagnosis}</p>` : ''}
                 ${item.medicine ? `<p>药品：${item.medicine}</p>` : ''}
-                ${item.dosage ? `<p>剂量：${item.dosage}</p>` : ''}
+                ${item.dosage ? `<p>剂量/用法：${item.dosage}</p>` : ''}
                 ${item.notes ? `<p>备注：${item.notes}</p>` : ''}
             </div>
             <div style="margin-top: 10px;">
@@ -148,9 +153,14 @@ function showAddMedicalForm(type = 'visit', defaultData = null) {
                     <input type="date" id="medicalDate" required>
                 </div>
                 <div class="form-group">
-                    <label>${isVisit ? '就诊原因' : '用药原因'} <span style="color: red;">*</span></label>
-                    <input type="text" id="medicalTitle" required placeholder="例如：感冒发烧" maxlength="50">
+                    <label>时间 ${!isVisit ? '<span style="color: red;">*</span>' : ''}</label>
+                    <input type="time" id="medicalTime" ${!isVisit ? 'required' : ''}>
                 </div>
+            </div>
+            
+            <div class="form-group">
+                <label>${isVisit ? '就诊原因' : '用药原因'} <span style="color: red;">*</span></label>
+                <input type="text" id="medicalTitle" required placeholder="例如：感冒发烧" maxlength="50">
             </div>
             
             ${isVisit ? `
@@ -199,8 +209,17 @@ function showAddMedicalForm(type = 'visit', defaultData = null) {
     
     // 设置默认值
     const dateInput = document.getElementById('medicalDate');
-    dateInput.value = defaultData ? defaultData.date : new Date().toISOString().split('T')[0];
-    dateInput.max = new Date().toISOString().split('T')[0];
+    const timeInput = document.getElementById('medicalTime');
+    const now = new Date();
+    dateInput.value = defaultData ? defaultData.date : now.toISOString().split('T')[0];
+    dateInput.max = now.toISOString().split('T')[0];
+    
+    // 设置时间默认值：编辑时用已有时间，新建时用当前时间
+    if (defaultData && defaultData.time) {
+        timeInput.value = defaultData.time;
+    } else if (!defaultData) {
+        timeInput.value = now.toTimeString().slice(0, 5);
+    }
     
     if (defaultData) {
         document.getElementById('medicalTitle').value = defaultData.title || '';
@@ -247,12 +266,17 @@ async function handleMedicalSubmit(event) {
     const recordId = document.getElementById('medicalRecordId').value;
     const type = document.getElementById('medicalType').value;
     const date = document.getElementById('medicalDate').value;
+    const time = document.getElementById('medicalTime').value;
     const title = document.getElementById('medicalTitle').value.trim();
     const notes = document.getElementById('medicalNotes').value.trim();
     
     // 校验
     if (!date) {
         showToast('请选择日期', 'warning');
+        return;
+    }
+    if (type === 'medication' && !time) {
+        showToast('用药请填写具体时间，方便掌握用药间隔', 'warning');
         return;
     }
     if (!title) {
@@ -264,6 +288,7 @@ async function handleMedicalSubmit(event) {
         childId: AppState.currentChildId,
         type,
         date,
+        time: time || null,
         title,
         notes
     };
