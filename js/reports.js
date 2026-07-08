@@ -150,12 +150,17 @@ function showAddReportForm(defaultData = null) {
             </div>
             <div class="form-group">
                 <label>报告摘要/关键指标</label>
-                <textarea id="reportSummary" placeholder="例如：白细胞 8.2，血红蛋白 125" maxlength="500"></textarea>
+                <textarea id="reportSummary" placeholder="填写关键指标或结论，例如：白细胞 8.2，血红蛋白 125，各项正常" maxlength="500" rows="4"></textarea>
             </div>
             <div class="form-group">
-                <label>上传报告图片或PDF</label>
-                <input type="file" id="reportFile" accept="image/*,.pdf">
-                <p style="font-size: 12px; color: #999; margin-top: 6px;">支持 JPG、PNG、PDF 格式，文件将保存在本地浏览器中</p>
+                <label>上传报告图片/PDF</label>
+                <input type="file" id="reportFile" accept="image/*,.pdf" onchange="previewReportImage(this)">
+                <p style="font-size: 12px; color: #999; margin-top: 4px;">支持 JPG、PNG、PDF，上传后可即时预览</p>
+                <div id="reportPreview" style="margin-top: 8px;">
+                    ${defaultData && defaultData.fileData && defaultData.fileType && defaultData.fileType.startsWith('image/') 
+                        ? `<img src="${defaultData.fileData}" style="max-width: 100%; max-height: 300px; border-radius: 6px; border: 1px solid #e2e8f0; cursor: zoom-in;" onclick="openImageViewer('${defaultData.fileData}')">` 
+                        : ''}
+                </div>
             </div>
             <div class="form-group">
                 <label>备注</label>
@@ -178,6 +183,29 @@ function showAddReportForm(defaultData = null) {
         document.getElementById('reportDoctor').value = defaultData.doctor || '';
         document.getElementById('reportSummary').value = defaultData.summary || '';
         document.getElementById('reportNotes').value = defaultData.notes || '';
+    }
+}
+
+/**
+ * 上传图片后即时预览
+ * @param {HTMLInputElement} input - 文件选择框
+ */
+function previewReportImage(input) {
+    const preview = document.getElementById('reportPreview');
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                preview.innerHTML = `<img src="${dataUrl}" style="max-width: 100%; max-height: 300px; border-radius: 6px; border: 1px solid #e2e8f0; cursor: zoom-in; object-fit: contain;" onclick="openImageViewer('${dataUrl}')">`;
+            };
+            reader.readAsDataURL(file);
+        } else if (file.type === 'application/pdf') {
+            preview.innerHTML = '<p style="font-size: 13px; color: #667eea; padding: 8px 0;">📄 PDF文件已选择，保存后可下载查看</p>';
+        }
+    } else {
+        preview.innerHTML = '';
     }
 }
 
@@ -367,7 +395,9 @@ function openImageViewer(src) {
     const overlay = document.createElement('div');
     overlay.className = 'image-viewer-overlay';
     overlay.onclick = function() {
-        document.body.removeChild(overlay);
+        if (overlay.parentNode) {
+            document.body.removeChild(overlay);
+        }
         document.body.style.overflow = '';
     };
     
