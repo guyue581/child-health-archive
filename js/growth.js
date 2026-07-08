@@ -39,6 +39,9 @@ const WHO_GROWTH_DATA = {
     }
 };
 
+// 月龄刻度（0-60个月，每3个月一个刻度）
+const MONTHS = [0, 3, 6, 9, 12, 18, 24, 30, 36, 42, 48, 54, 60];
+
 // ECharts 图表实例
 let heightChart = null;
 let weightChart = null;
@@ -164,16 +167,15 @@ function renderGrowthCharts(growthList) {
     const gender = child.gender;
     const whoData = WHO_GROWTH_DATA[gender] || WHO_GROWTH_DATA.male;
     
-    // 准备WHO标准曲线数据
-    const months = Object.keys(whoData).map(m => parseInt(m)).sort((a, b) => a - b);
-    const p3Height = months.map(m => whoData[m][0]);
-    const p50Height = months.map(m => whoData[m][1]);
-    const p97Height = months.map(m => whoData[m][2]);
-    const p3Weight = months.map(m => whoData[m][3]);
-    const p50Weight = months.map(m => whoData[m][4]);
-    const p97Weight = months.map(m => whoData[m][5]);
+    // 准备WHO标准曲线数据（转换为[月龄, 值]格式，适配数值轴）
+    const p3HeightData = MONTHS.map(m => [m, whoData[m][0]]);
+    const p50HeightData = MONTHS.map(m => [m, whoData[m][1]]);
+    const p97HeightData = MONTHS.map(m => [m, whoData[m][2]]);
+    const p3WeightData = MONTHS.map(m => [m, whoData[m][3]]);
+    const p50WeightData = MONTHS.map(m => [m, whoData[m][4]]);
+    const p97WeightData = MONTHS.map(m => [m, whoData[m][5]]);
     
-    // 准备用户数据
+    // 准备用户数据（月龄已计算，格式为[月龄, 值]）
     const userHeightData = growthList.map(item => {
         const ageMonths = calculateAgeMonthsAtDate(child.birthday, item.date);
         return [ageMonths, parseFloat(item.height)];
@@ -184,20 +186,24 @@ function renderGrowthCharts(growthList) {
         return [ageMonths, parseFloat(item.weight)];
     });
     
+    // 动态计算X轴最大月龄：取60（5岁）和实际数据最大月龄+6的最大值
+    const maxUserMonth = Math.max(...userHeightData.map(d => d[0]), ...userWeightData.map(d => d[0]), 0);
+    const chartMaxMonth = Math.max(60, maxUserMonth + 6);
+    
     // 渲染身高图
-    renderChart('heightChart', '身高 (cm)', months, [
-        { name: 'P3 偏矮参考线', data: p3Height, color: '#cbd5e0', type: 'line' },
-        { name: 'P50 平均水平', data: p50Height, color: '#48bb78', type: 'line' },
-        { name: 'P97 偏高参考线', data: p97Height, color: '#cbd5e0', type: 'line' },
-        { name: '实际身高', data: userHeightData, color: '#667eea', type: 'scatter' }
+    renderChart('heightChart', '身高 (cm)', chartMaxMonth, [
+        { name: 'P3 偏矮参考线', data: p3HeightData, color: '#cbd5e0', type: 'line', lineWidth: 1 },
+        { name: 'P50 平均水平', data: p50HeightData, color: '#48bb78', type: 'line', lineWidth: 2 },
+        { name: 'P97 偏高参考线', data: p97HeightData, color: '#cbd5e0', type: 'line', lineWidth: 1 },
+        { name: '实际身高', data: userHeightData, color: '#667eea', type: 'line', lineWidth: 3, isUser: true }
     ]);
     
     // 渲染体重图
-    renderChart('weightChart', '体重 (kg)', months, [
-        { name: 'P3 偏轻参考线', data: p3Weight, color: '#cbd5e0', type: 'line' },
-        { name: 'P50 平均水平', data: p50Weight, color: '#48bb78', type: 'line' },
-        { name: 'P97 偏重参考线', data: p97Weight, color: '#cbd5e0', type: 'line' },
-        { name: '实际体重', data: userWeightData, color: '#667eea', type: 'scatter' }
+    renderChart('weightChart', '体重 (kg)', chartMaxMonth, [
+        { name: 'P3 偏轻参考线', data: p3WeightData, color: '#cbd5e0', type: 'line', lineWidth: 1 },
+        { name: 'P50 平均水平', data: p50WeightData, color: '#48bb78', type: 'line', lineWidth: 2 },
+        { name: 'P97 偏重参考线', data: p97WeightData, color: '#cbd5e0', type: 'line', lineWidth: 1 },
+        { name: '实际体重', data: userWeightData, color: '#667eea', type: 'line', lineWidth: 3, isUser: true }
     ]);
 }
 
@@ -205,10 +211,10 @@ function renderGrowthCharts(growthList) {
  * 通用渲染ECharts图表
  * @param {string} containerId - 容器ID
  * @param {string} yAxisName - Y轴名称
- * @param {Array} months - 月龄数组
+ * @param {number} maxMonth - 最大月龄
  * @param {Array} series - 数据系列
  */
-function renderChart(containerId, yAxisName, months, series) {
+function renderChart(containerId, yAxisName, maxMonth, series) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -233,7 +239,15 @@ function renderChart(containerId, yAxisName, months, series) {
     
     const option = {
         tooltip: {
-            trigger: 'axis'
+            trigger: 'axis',
+            formatter: function(params) {
+                let result = params[0].axisValueLabel + '月龄<br/>';
+                params.forEach(p => {
+                    const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:6px;"></span>`;
+                    result += `${dot}${p.seriesName}: ${p.data[1]}<br/>`;
+                });
+                return result;
+            }
         },
         legend: {
             data: series.map(s => s.name),
@@ -247,9 +261,11 @@ function renderChart(containerId, yAxisName, months, series) {
             containLabel: true
         },
         xAxis: {
-            type: 'category',
+            type: 'value',
             name: '月龄',
-            data: months,
+            min: 0,
+            max: maxMonth,
+            interval: 6,
             boundaryGap: false
         },
         yAxis: {
@@ -261,10 +277,11 @@ function renderChart(containerId, yAxisName, months, series) {
             type: s.type,
             data: s.data,
             smooth: true,
-            symbolSize: s.type === 'scatter' ? 10 : 4,
+            symbol: s.isUser ? 'circle' : 'none',
+            symbolSize: s.isUser ? 10 : 4,
             lineStyle: {
                 color: s.color,
-                width: s.name === 'P50' ? 2 : 1
+                width: s.lineWidth || (s.isUser ? 3 : 1)
             },
             itemStyle: {
                 color: s.color
